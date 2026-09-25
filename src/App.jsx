@@ -12,7 +12,7 @@ import PetShop from './components/PetShop';
 import DailyQuests from './components/DailyQuests';
 import ChibiCat from './components/ChibiCat';
 import AuthModal from './components/AuthModal';
-import LunaChat from './components/LunaChat';
+
 import { soundEngine } from './utils/audio';
 import { calculateLevelFromTotalXp } from './utils/levelSystem';
 import { calculateConsecutiveStreak } from './utils/streakSystem';
@@ -526,28 +526,10 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'chat' && (
-          <LunaChat
-            contextData={{
-              userName: currentUser?.username || 'Guest',
-              waterGlasses: Math.floor((waterData.currentMl || 0) / 250),
-              waterGoal: Math.floor((waterData.goalMl || 2000) / 250),
-              streak: stats.streak || 0,
-              habitsCompleted: habits.filter(h => h.completed).length,
-              totalHabits: habits.length,
-              currentMood: moodLogs[0]?.mood?.label || 'Peaceful'
-            }}
-            onActionTrigger={(action) => {
-              if (action === 'open_breathing') setActiveTab('mindfulness');
-              else if (action === 'suggest_food') setActiveTab('food');
-              else if (action === 'suggest_music') setActiveTab('sound');
-              else if (action === 'water_prompt') setActiveTab('hydration');
-            }}
-          />
-        )}
+
 
         {activeTab === 'food' && (
-          <FoodPlanner onOpenChatWithQuery={() => setActiveTab('chat')} />
+          <FoodPlanner />
         )}
 
         {activeTab === 'mindfulness' && (

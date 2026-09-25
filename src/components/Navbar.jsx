@@ -16,8 +16,7 @@ import {
   Wind, 
   Calendar, 
   ShoppingBag,
-  Trophy,
-  MessageSquare
+  Trophy
 } from 'lucide-react';
 import { soundEngine } from '../utils/audio';
 import { calculateLevelFromTotalXp } from '../utils/levelSystem';
@@ -44,7 +43,7 @@ export default function Navbar({
 
   const navItems = [
     { id: 'sanctuary', label: 'Luna Sanctuary', icon: Cat },
-    { id: 'chat', label: 'Luna Chat 💬', icon: MessageSquare },
+
     { id: 'shop', label: "Luna's Boutique 🎩", icon: ShoppingBag },
     { id: 'hydration', label: 'Hydration 💧', icon: Droplet },
     { id: 'habits', label: 'Habits 🎯', icon: CheckCircle2 },

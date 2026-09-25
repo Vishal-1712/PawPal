@@ -13,7 +13,7 @@ import {
 import { HEALTHY_MEALS } from '../utils/lunaAI';
 import { soundEngine } from '../utils/audio';
 
-export default function FoodPlanner({ onOpenChatWithQuery }) {
+export default function FoodPlanner() {
   const [selectedDiet, setSelectedDiet] = useState('All');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [plannedMeals, setPlannedMeals] = useState(() => {
