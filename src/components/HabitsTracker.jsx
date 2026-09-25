@@ -88,8 +88,8 @@ export default function HabitsTracker({
     if (willBeCompleted) {
       soundEngine.playHabitComplete();
       soundEngine.playCoinCollect();
-      onAddXp(25);
-      onAddCoins(10);
+      onAddXp(target.xpReward || 25);
+      onAddCoins(target.coinReward || 10);
 
       // Record activity in contribution graph
       if (onRecordActivity) {
@@ -115,8 +115,27 @@ export default function HabitsTracker({
         onAddXp(100);
       }
     } else {
-      // Unticking a habit -> play a quick click ring
+      // Unticking a habit -> play a quick click ring & roll back rewards to prevent exploit
       soundEngine.playClickRing();
+      onAddXp(-(target.xpReward || 25));
+      onAddCoins(-(target.coinReward || 10));
+
+      if (onRecordActivity) {
+        onRecordActivity(-1);
+      }
+
+      // If all were completed before this untick, roll back the all-complete bonus
+      const totalCompletedBefore = habits.filter((h) => h.completed).length;
+      if (totalCompletedBefore === habits.length) {
+        onAddCoins(-30);
+        onAddXp(-100);
+      }
+
+      setStats((prev) => ({
+        ...prev,
+        happiness: Math.max(0, prev.happiness - 3),
+        fluffiness: Math.max(0, prev.fluffiness - 2)
+      }));
     }
 
     setHabits((prev) =>

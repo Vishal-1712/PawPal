@@ -34,21 +34,25 @@ export default function HydrationTracker({
     const nextMl = currentMl + ml;
     const wasUnderGoal = currentMl < goalMl;
     const reachedGoal = nextMl >= goalMl;
+    const alreadyCelebrated = waterData.goalCelebratedToday;
 
     setWaterData((prev) => ({
       ...prev,
       currentMl: nextMl,
+      goalCelebratedToday: prev.goalCelebratedToday || reachedGoal,
       history: [
         { time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), ml },
         ...(prev.history || []).slice(0, 7)
       ]
     }));
 
-    // Award XP
-    onAddXp(5);
+    // Award incremental XP with reasonable ceiling per day
+    if (nextMl <= goalMl + 500) {
+      onAddXp(5);
+    }
 
-    // Goal reached celebration!
-    if (wasUnderGoal && reachedGoal) {
+    // Goal reached celebration! (Awarded once per daily cycle)
+    if (wasUnderGoal && reachedGoal && !alreadyCelebrated) {
       soundEngine.playHabitComplete();
       confetti({
         particleCount: 120,
@@ -61,6 +65,7 @@ export default function HydrationTracker({
   };
 
   const resetWater = () => {
+    soundEngine.playClickRing();
     setWaterData((prev) => ({ ...prev, currentMl: 0 }));
   };
 

@@ -19,7 +19,8 @@ export default function DailyQuests({
   setQuests, 
   onAddCoins, 
   onAddXp, 
-  stats 
+  stats,
+  waterData 
 }) {
   const claimQuest = (questId) => {
     const q = quests.find(item => item.id === questId);
@@ -36,10 +37,30 @@ export default function DailyQuests({
   };
 
   const achievements = [
-    { id: 'a1', title: 'Hydration Pioneer 💧', desc: 'Drank over 1500ml in a single day.', unlocked: true },
-    { id: 'a2', title: 'Streak Champion 🔥', desc: 'Maintained a 3+ day streak.', unlocked: stats.streak >= 3 },
-    { id: 'a3', title: 'Mindful Soul 🧘', desc: 'Completed a 4-7-8 breathing session.', unlocked: true },
-    { id: 'a4', title: 'Luna’s True Companion 💖', desc: 'Reached Level 2 with your digital cat.', unlocked: stats.level >= 2 }
+    { 
+      id: 'a1', 
+      title: 'Hydration Pioneer 💧', 
+      desc: 'Drank over 1500ml in a single day.', 
+      unlocked: (waterData?.currentMl || 0) >= 1500 
+    },
+    { 
+      id: 'a2', 
+      title: 'Streak Champion 🔥', 
+      desc: 'Maintained a 3+ day streak.', 
+      unlocked: (stats?.streak || 0) >= 3 
+    },
+    { 
+      id: 'a3', 
+      title: 'Mindful Soul 🧘', 
+      desc: 'Completed a 4-7-8 breathing or meditation session.', 
+      unlocked: !!stats?.mindfulnessDone 
+    },
+    { 
+      id: 'a4', 
+      title: 'Luna’s True Companion 💖', 
+      desc: 'Reached Level 2 with your digital cat.', 
+      unlocked: (stats?.level || 1) >= 2 
+    }
   ];
 
   return (

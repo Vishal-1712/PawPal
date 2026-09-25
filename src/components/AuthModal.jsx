@@ -21,7 +21,24 @@ export default function AuthModal({ onClose, onLogin, reason = 'contribution' })
     setError('');
   };
 
-  const handleSubmit = (e) => {
+  const hashPassword = async (plainText) => {
+    try {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(plainText);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    } catch (e) {
+      let hash = 0;
+      for (let i = 0; i < plainText.length; i++) {
+        hash = ((hash << 5) - hash) + plainText.charCodeAt(i);
+        hash |= 0;
+      }
+      return 'h_' + Math.abs(hash);
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const { username, email, password } = form;
 
@@ -36,6 +53,7 @@ export default function AuthModal({ onClose, onLogin, reason = 'contribution' })
 
     const usersRaw = localStorage.getItem('pawpal_users');
     const users = usersRaw ? JSON.parse(usersRaw) : {};
+    const hashedPassword = await hashPassword(password);
 
     if (mode === 'signup') {
       if (users[username.toLowerCase()]) {
@@ -45,7 +63,7 @@ export default function AuthModal({ onClose, onLogin, reason = 'contribution' })
       const newUser = {
         username: username.trim(),
         email: email.trim(),
-        password, // In production, always hash passwords. This is a local demo app.
+        password: hashedPassword, // SHA-256 hashed password
         createdAt: new Date().toISOString(),
         avatarColor: '#16a34a'
       };
@@ -55,9 +73,15 @@ export default function AuthModal({ onClose, onLogin, reason = 'contribution' })
       onLogin(newUser);
     } else {
       const user = users[username.toLowerCase()];
-      if (!user || user.password !== password) {
+      const isMatch = user && (user.password === hashedPassword || user.password === password);
+      if (!user || !isMatch) {
         setError('Invalid username or password. Check your details!');
         return;
+      }
+      // Migrate legacy plaintext password to hash if matched
+      if (user.password === password) {
+        user.password = hashedPassword;
+        localStorage.setItem('pawpal_users', JSON.stringify(users));
       }
       localStorage.setItem('pawpal_session', JSON.stringify({ username: user.username, loggedInAt: Date.now() }));
       onLogin(user);

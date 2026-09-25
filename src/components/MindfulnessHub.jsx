@@ -14,7 +14,7 @@ import {
 import { MEDITATIONS, QUICK_STRETCHES } from '../utils/lunaAI';
 import { soundEngine } from '../utils/audio';
 
-export default function MindfulnessHub({ onAddXp, onAddCoins, setStats }) {
+export default function MindfulnessHub({ onAddXp, onAddCoins, setStats, onMindfulnessSessionComplete }) {
   const [activeTab, setActiveTab] = useState('breathing'); // 'breathing', 'meditation', 'stretches'
 
   // Breathing Guide State
@@ -65,30 +65,30 @@ export default function MindfulnessHub({ onAddXp, onAddCoins, setStats }) {
     let timer;
     if (isBreathingActive) {
       timer = setInterval(() => {
-        setBreathCount((prev) => {
-          if (prev <= 1) {
-            // Advance phase
-            const currentPhases = techniques[breathTechnique].phases;
-            const currentPhaseIdx = currentPhases.findIndex(p => p.name === breathPhase);
-            const nextIdx = (currentPhaseIdx + 1) % currentPhases.length;
+        if (breathCount <= 1) {
+          // Advance phase
+          const currentPhases = techniques[breathTechnique].phases;
+          const currentPhaseIdx = currentPhases.findIndex(p => p.name === breathPhase);
+          const nextIdx = (currentPhaseIdx + 1) % currentPhases.length;
 
-            if (nextIdx === 0) {
-              setCyclesCompleted(c => c + 1);
-              soundEngine.playPurrBurst();
-              onAddXp(10);
-            } else {
-              soundEngine.playMeditationBell();
-            }
-
-            setBreathPhase(currentPhases[nextIdx].name);
-            return currentPhases[nextIdx].duration;
+          if (nextIdx === 0) {
+            setCyclesCompleted(c => c + 1);
+            soundEngine.playPurrBurst();
+            if (onAddXp) onAddXp(10);
+            if (onMindfulnessSessionComplete) onMindfulnessSessionComplete();
+          } else {
+            soundEngine.playMeditationBell();
           }
-          return prev - 1;
-        });
+
+          setBreathPhase(currentPhases[nextIdx].name);
+          setBreathCount(currentPhases[nextIdx].duration);
+        } else {
+          setBreathCount(prev => prev - 1);
+        }
       }, 1000);
     }
     return () => clearInterval(timer);
-  }, [isBreathingActive, breathPhase, breathTechnique]);
+  }, [isBreathingActive, breathCount, breathPhase, breathTechnique, onAddXp, onMindfulnessSessionComplete]);
 
   const startBreathing = () => {
     soundEngine.init();
@@ -112,6 +112,7 @@ export default function MindfulnessHub({ onAddXp, onAddCoins, setStats }) {
       soundEngine.playHabitComplete();
       onAddXp(40);
       onAddCoins(15);
+      if (onMindfulnessSessionComplete) onMindfulnessSessionComplete();
       setMedStepIndex(0);
     }
   };

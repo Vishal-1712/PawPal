@@ -10,7 +10,8 @@ import {
   BookOpen, 
   Calendar, 
   Send, 
-  Clock
+  Clock,
+  Trash2
 } from 'lucide-react';
 import { soundEngine } from '../utils/audio';
 
@@ -46,24 +47,32 @@ export default function MoodJournal({
     }
   };
 
+  const todayDateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const entriesToday = (moodLogs || []).filter(log => log.date === todayDateStr).length;
+  const isRewardEligible = entriesToday < 2;
+
   const handleSaveMood = (e) => {
     e.preventDefault();
     if (!selectedMood) return;
 
     soundEngine.playPurrBurst();
-    onAddXp(20);
-    onAddCoins(10);
+    
+    // Only award XP/Coins for the first 2 entries of the day to prevent spam-farming
+    if (isRewardEligible) {
+      onAddXp(20);
+      onAddCoins(10);
+    }
 
     const newEntry = {
       id: Date.now(),
       mood: selectedMood,
       tags: selectedTags,
       note: journalNote,
-      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      date: todayDateStr,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
-    setMoodLogs([newEntry, ...moodLogs]);
+    setMoodLogs([newEntry, ...(moodLogs || [])]);
 
     // Trigger Luna Calming Protocol for low moods
     if (['stressed', 'sad', 'exhausted'].includes(selectedMood.id)) {
@@ -82,6 +91,11 @@ export default function MoodJournal({
     // Reset inputs
     setJournalNote('');
     setSelectedTags([]);
+  };
+
+  const handleDeleteEntry = (entryId) => {
+    soundEngine.playClickRing();
+    setMoodLogs((prev) => prev.filter(item => item.id !== entryId));
   };
 
   return (
@@ -166,18 +180,19 @@ export default function MoodJournal({
                 width: '100%',
                 padding: '0.8rem 1rem',
                 borderRadius: 'var(--radius-md)',
-                background: 'rgba(0, 0, 0, 0.25)',
-                border: '1px solid var(--border-glass)',
-                color: '#fff',
+                background: 'var(--surface-light)',
+                border: '1.5px solid var(--border-light)',
+                color: 'var(--text-main)',
                 fontSize: '0.9rem',
-                resize: 'none'
+                resize: 'none',
+                fontFamily: 'inherit'
               }}
             />
           </div>
 
           <button type="submit" disabled={!selectedMood} className="btn btn-primary" style={{ width: '100%' }}>
             <Sparkles size={16} />
-            <span>Save Mood & Log to Journal (+20 XP, +10 🪙)</span>
+            <span>Save Mood & Log to Journal ({isRewardEligible ? '+20 XP, +10 🪙' : 'Daily limit reached'})</span>
           </button>
         </form>
 
@@ -197,7 +212,7 @@ export default function MoodJournal({
                 Luna's Calming Care Protocol
               </h4>
             </div>
-            <p style={{ fontSize: '0.88rem', color: '#f1f5f9', marginBottom: '0.9rem', lineHeight: '1.5' }}>
+            <p style={{ fontSize: '0.88rem', color: 'var(--text-main)', marginBottom: '0.9rem', lineHeight: '1.5' }}>
               {activeCalmProtocol.message}
             </p>
             <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
@@ -230,14 +245,29 @@ export default function MoodJournal({
             </div>
           ) : (
             moodLogs.map((log) => (
-              <div key={log.id} className="stat-card" style={{ borderLeft: `3px solid ${log.mood.color}` }}>
+              <div key={log.id} className="stat-card" style={{ borderLeft: `3px solid ${log.mood.color}`, position: 'relative' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontWeight: '700', fontSize: '0.92rem', color: log.mood.color, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     <span>{log.mood.emoji}</span> {log.mood.label}
                   </span>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                    <Clock size={11} /> {log.date} at {log.time}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                      <Clock size={11} /> {log.date} at {log.time}
+                    </span>
+                    <button
+                      onClick={() => handleDeleteEntry(log.id)}
+                      title="Delete entry"
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: 'var(--text-dim)',
+                        padding: '2px'
+                      }}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
                 </div>
 
                 {log.note && (

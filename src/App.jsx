@@ -12,15 +12,17 @@ import PetShop from './components/PetShop';
 import DailyQuests from './components/DailyQuests';
 import ChibiCat from './components/ChibiCat';
 import AuthModal from './components/AuthModal';
+import LunaChat from './components/LunaChat';
 import { soundEngine } from './utils/audio';
 import { calculateLevelFromTotalXp } from './utils/levelSystem';
+import { calculateConsecutiveStreak } from './utils/streakSystem';
 import confetti from 'canvas-confetti';
 import { Sparkles, Coins, Trophy, Music, Play, Square, PartyPopper } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('sanctuary');
   const [isMuted, setIsMuted] = useState(false);
-  const [theme, setTheme] = useState('light');
+  const [theme, setTheme] = useState(() => localStorage.getItem('pawpal_theme') || 'light');
 
   // Level Up Celebration State
   const [levelUpModal, setLevelUpModal] = useState(null); // { oldLevel, newLevel }
@@ -51,7 +53,10 @@ export default function App() {
 
   // Activity Log State (Recorded per user ID; empty {} when guest/new user)
   const [activityLog, setActivityLog] = useState(() => {
-    if (!currentUser) return {}; // 0 submissions by default
+    if (!currentUser) {
+      const guestAct = localStorage.getItem('pawpal_guest_activity');
+      return guestAct ? JSON.parse(guestAct) : {};
+    }
     const key = `pawpal_user_${currentUser.username.toLowerCase()}_activity`;
     const saved = localStorage.getItem(key);
     if (saved) {
@@ -63,25 +68,34 @@ export default function App() {
   const recordActivity = (amount = 1) => {
     const todayKey = getLocalDateKey(new Date());
     setActivityLog((prev) => {
-      const next = { ...prev, [todayKey]: (prev[todayKey] || 0) + amount };
+      const currentVal = prev[todayKey] || 0;
+      const nextVal = Math.max(0, currentVal + amount);
+      const next = { ...prev, [todayKey]: nextVal };
       if (currentUser) {
         localStorage.setItem(`pawpal_user_${currentUser.username.toLowerCase()}_activity`, JSON.stringify(next));
+      } else {
+        localStorage.setItem('pawpal_guest_activity', JSON.stringify(next));
       }
+      const calculatedStreak = calculateConsecutiveStreak(next);
+      setStats((s) => ({ ...s, streak: calculatedStreak }));
       return next;
     });
   };
 
-  // Stats: Level 1 for Guest, Loaded profile for Logged In User
+  // Stats: Initialized with calculated streak from activity history
   const [stats, setStats] = useState(() => {
+    const calculatedStreak = calculateConsecutiveStreak(activityLog);
     if (currentUser) {
       const saved = localStorage.getItem(`pawpal_user_${currentUser.username.toLowerCase()}_stats`);
       if (saved) {
-        try { return JSON.parse(saved); } catch (e) {}
+        try {
+          const parsed = JSON.parse(saved);
+          return { ...parsed, streak: calculatedStreak };
+        } catch (e) {}
       }
-      return { streak: 1, coins: 40, xp: 35, level: 1, happiness: 85, fluffiness: 80 };
+      return { streak: calculatedStreak, coins: 40, xp: 35, level: 1, happiness: 85, fluffiness: 80 };
     }
-    // Default Guest state: Level 1 (35 XP), 0 streak, 20 coins
-    return { streak: 0, coins: 20, xp: 35, level: 1, happiness: 80, fluffiness: 80 };
+    return { streak: calculatedStreak, coins: 20, xp: 35, level: 1, happiness: 80, fluffiness: 80 };
   });
 
   // Equipped Cosmetics on Luna
@@ -139,24 +153,40 @@ export default function App() {
   });
 
   // Mood Journal Logs
-  const [moodLogs, setMoodLogs] = useState(() => [
-    {
+  const [moodLogs, setMoodLogs] = useState(() => {
+    if (currentUser) {
+      const saved = localStorage.getItem(`pawpal_user_${currentUser.username.toLowerCase()}_mood_logs`);
+      if (saved) {
+        try { return JSON.parse(saved); } catch (e) {}
+      }
+      return [];
+    }
+    return [{
       id: 1,
       mood: { id: 'peaceful', label: 'Peaceful', emoji: '😌', color: '#16a34a' },
       tags: ['Self-Care 🧘', 'Sleep 🌙'],
       note: 'Felt refreshed and ready to grow with Luna today!',
       date: 'Today',
       time: '09:15 AM'
-    }
-  ]);
+    }];
+  });
 
   // Daily Quests
-  const [quests, setQuests] = useState(() => [
+  const defaultQuests = [
     { id: 'q1', title: 'Sip 4 Glasses of Water 💧', desc: 'Reach 1000ml hydration intake.', progress: 0, target: 4, coinReward: 15, xpReward: 30, claimed: false },
     { id: 'q2', title: 'Conquer 3 Daily Habits 🎯', desc: 'Check off 3 wellness habits.', progress: 0, target: 3, coinReward: 20, xpReward: 40, claimed: false },
     { id: 'q3', title: 'Log a Mood Journal Entry 💖', desc: 'Check in with how your heart feels.', progress: 0, target: 1, coinReward: 10, xpReward: 25, claimed: false },
     { id: 'q4', title: 'Complete 1 Mindfulness Session 🧘', desc: 'Do a 4-7-8 breathing or cloud visualization.', progress: 0, target: 1, coinReward: 15, xpReward: 35, claimed: false }
-  ]);
+  ];
+  const [quests, setQuests] = useState(() => {
+    if (currentUser) {
+      const saved = localStorage.getItem(`pawpal_user_${currentUser.username.toLowerCase()}_quests`);
+      if (saved) {
+        try { return JSON.parse(saved); } catch (e) {}
+      }
+    }
+    return defaultQuests;
+  });
 
   // Handle Login Event: Load or create user profile data
   const handleLogin = (user) => {
@@ -167,10 +197,31 @@ export default function App() {
     // Save session
     localStorage.setItem('pawpal_session', JSON.stringify({ username: user.username, loggedInAt: Date.now() }));
 
-    // Load or initialize Stats
+    // Load or initialize Activity Log (Contribution Graph)
+    const savedActivity = localStorage.getItem(`pawpal_user_${username}_activity`);
+    let loadedActivity = {};
+    if (savedActivity) {
+      try { loadedActivity = JSON.parse(savedActivity); } catch (e) {}
+      setActivityLog(loadedActivity);
+    } else {
+      setActivityLog({});
+      localStorage.setItem(`pawpal_user_${username}_activity`, JSON.stringify({}));
+    }
+
+    const calculatedStreak = calculateConsecutiveStreak(loadedActivity);
+
+    // Load or initialize Stats with calculated streak
     const savedStats = localStorage.getItem(`pawpal_user_${username}_stats`);
-    if (savedStats) setStats(JSON.parse(savedStats));
-    else setStats({ streak: 1, coins: 40, xp: 35, level: 1, happiness: 85, fluffiness: 80 });
+    if (savedStats) {
+      try {
+        const parsed = JSON.parse(savedStats);
+        setStats({ ...parsed, streak: calculatedStreak });
+      } catch (e) {
+        setStats({ streak: calculatedStreak, coins: 40, xp: 35, level: 1, happiness: 85, fluffiness: 80 });
+      }
+    } else {
+      setStats({ streak: calculatedStreak, coins: 40, xp: 35, level: 1, happiness: 85, fluffiness: 80 });
+    }
 
     // Load or initialize Cosmetics
     const savedEquipped = localStorage.getItem(`pawpal_user_${username}_equipped`);
@@ -186,34 +237,35 @@ export default function App() {
     if (savedWater) setWaterData(JSON.parse(savedWater));
     else setWaterData({ currentMl: 750, goalMl: 2000, history: [{ time: '08:30 AM', ml: 250 }] });
 
-    // Load or initialize Activity Log (Contribution Graph)
-    const savedActivity = localStorage.getItem(`pawpal_user_${username}_activity`);
-    if (savedActivity) {
-      setActivityLog(JSON.parse(savedActivity));
-    } else {
-      setActivityLog({});
-      localStorage.setItem(`pawpal_user_${username}_activity`, JSON.stringify({}));
-    }
+    // Load profile-specific journal and quest progress
+    const savedMoodLogs = localStorage.getItem(`pawpal_user_${username}_mood_logs`);
+    setMoodLogs(savedMoodLogs ? JSON.parse(savedMoodLogs) : []);
+
+    const savedQuests = localStorage.getItem(`pawpal_user_${username}_quests`);
+    if (savedQuests) setQuests(JSON.parse(savedQuests));
   };
 
-  // Handle Logout Event: Reset to Guest Mode (Level 1, 0 streak, 0 submissions)
+  // Handle Logout Event: Reset to Guest Mode
   const handleLogout = () => {
     localStorage.removeItem('pawpal_session');
     setCurrentUser(null);
 
-    setStats({ streak: 0, coins: 20, xp: 35, level: 1, happiness: 80, fluffiness: 80 });
+    const guestActRaw = localStorage.getItem('pawpal_guest_activity');
+    const guestAct = guestActRaw ? JSON.parse(guestActRaw) : {};
+    setActivityLog(guestAct);
+    const guestStreak = calculateConsecutiveStreak(guestAct);
+
+    setStats({ streak: guestStreak, coins: 20, xp: 35, level: 1, happiness: 80, fluffiness: 80 });
     setEquipped({ hat: 'none', collar: 'none', bed: 'basket', room: 'twilight' });
     setInventory(['none', 'basket', 'twilight']);
     setWaterData({ currentMl: 0, goalMl: 2000, history: [] });
-    setHabits([
-      { id: 'h1', title: '10-Minute Morning Sun & Cat-Cow Stretch 🧘', category: 'mindfulness', completed: false, streak: 0, xpReward: 25, coinReward: 10 },
-      { id: 'h2', title: 'Drink 8 Fresh Glasses of Water 💧', category: 'nutrition', completed: false, streak: 0, xpReward: 25, coinReward: 10 },
-      { id: 'h3', title: '30-Minute Outdoor Walk / Cardio 🏃', category: 'fitness', completed: false, streak: 0, xpReward: 25, coinReward: 10 },
-      { id: 'h4', title: 'Eat a Rainbow Nutrient-Rich Lunch 🥗', category: 'nutrition', completed: false, streak: 0, xpReward: 25, coinReward: 10 },
-      { id: 'h5', title: 'Screen-Free Relaxing Wind-Down (10 PM) 🌙', category: 'sleep', completed: false, streak: 0, xpReward: 25, coinReward: 10 },
-      { id: 'h6', title: 'Read 15 Minutes of a Book 📚', category: 'growth', completed: false, streak: 0, xpReward: 25, coinReward: 10 }
+    setMoodLogs([]);
+    setQuests([
+      { id: 'q1', title: 'Sip 4 Glasses of Water 💧', desc: 'Reach 1000ml hydration intake.', progress: 0, target: 4, coinReward: 15, xpReward: 30, claimed: false },
+      { id: 'q2', title: 'Conquer 3 Daily Habits 🎯', desc: 'Check off 3 wellness habits.', progress: 0, target: 3, coinReward: 20, xpReward: 40, claimed: false },
+      { id: 'q3', title: 'Log a Mood Journal Entry 💖', desc: 'Check in with how your heart feels.', progress: 0, target: 1, coinReward: 10, xpReward: 25, claimed: false },
+      { id: 'q4', title: 'Complete 1 Mindfulness Session 🧘', desc: 'Do a 4-7-8 breathing or cloud visualization.', progress: 0, target: 1, coinReward: 15, xpReward: 35, claimed: false }
     ]);
-    setActivityLog({});
   };
 
   // Auto-Save Effect for Logged-In Users
@@ -226,8 +278,62 @@ export default function App() {
       localStorage.setItem(`pawpal_user_${username}_water`, JSON.stringify(waterData));
       localStorage.setItem(`pawpal_user_${username}_habits`, JSON.stringify(habits));
       localStorage.setItem(`pawpal_user_${username}_activity`, JSON.stringify(activityLog));
+      localStorage.setItem(`pawpal_user_${username}_mood_logs`, JSON.stringify(moodLogs));
+      localStorage.setItem(`pawpal_user_${username}_quests`, JSON.stringify(quests));
     }
-  }, [currentUser, stats, equipped, inventory, waterData, habits, activityLog]);
+  }, [currentUser, stats, equipped, inventory, waterData, habits, activityLog, moodLogs, quests]);
+
+  // Apply Theme to Document Element and Persist
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('pawpal_theme', theme);
+  }, [theme]);
+
+  // Midnight / Daily Reset System
+  useEffect(() => {
+    const todayKey = getLocalDateKey(new Date());
+    const lastDate = localStorage.getItem('pawpal_last_active_date');
+
+    if (lastDate && lastDate !== todayKey) {
+      // It's a new day! Reset daily habits completion, water, and quests claimed status
+      setHabits(prev => prev.map(h => ({ ...h, completed: false })));
+      setWaterData(prev => ({ ...prev, currentMl: 0, goalCelebratedToday: false }));
+      setQuests(prev => prev.map(q => ({ ...q, claimed: false })));
+      setStats(prev => ({
+        ...prev,
+        mindfulnessDoneToday: false,
+        streak: calculateConsecutiveStreak(activityLog)
+      }));
+    }
+    localStorage.setItem('pawpal_last_active_date', todayKey);
+  }, []);
+
+  // Live Synchronization of Daily Quests Progress
+  useEffect(() => {
+    const waterGlasses = Math.min(4, Math.floor((waterData.currentMl || 0) / 250));
+    const completedHabitsCount = habits.filter(h => h.completed).length;
+    const todayDateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const moodCount = (moodLogs || []).filter(m => m.date === todayDateStr).length;
+    const mindfulnessCount = stats.mindfulnessDoneToday ? 1 : 0;
+
+    setQuests(prev => prev.map(q => {
+      let newProgress = q.progress;
+      if (q.id === 'q1') newProgress = waterGlasses;
+      else if (q.id === 'q2') newProgress = completedHabitsCount;
+      else if (q.id === 'q3') newProgress = moodCount;
+      else if (q.id === 'q4') newProgress = mindfulnessCount;
+      return { ...q, progress: newProgress };
+    }));
+  }, [waterData.currentMl, habits, moodLogs, stats.mindfulnessDoneToday]);
+
+  const handleMindfulnessComplete = () => {
+    setStats(prev => ({
+      ...prev,
+      mindfulnessDone: true,
+      mindfulnessDoneToday: true
+    }));
+    recordActivity(1);
+  };
 
   // Sync "Drink 8 Fresh Glasses of Water" habit with Hydration Tracker progress (100% complete)
   useEffect(() => {
@@ -420,8 +526,28 @@ export default function App() {
           />
         )}
 
+        {activeTab === 'chat' && (
+          <LunaChat
+            contextData={{
+              userName: currentUser?.username || 'Guest',
+              waterGlasses: Math.floor((waterData.currentMl || 0) / 250),
+              waterGoal: Math.floor((waterData.goalMl || 2000) / 250),
+              streak: stats.streak || 0,
+              habitsCompleted: habits.filter(h => h.completed).length,
+              totalHabits: habits.length,
+              currentMood: moodLogs[0]?.mood?.label || 'Peaceful'
+            }}
+            onActionTrigger={(action) => {
+              if (action === 'open_breathing') setActiveTab('mindfulness');
+              else if (action === 'suggest_food') setActiveTab('food');
+              else if (action === 'suggest_music') setActiveTab('sound');
+              else if (action === 'water_prompt') setActiveTab('hydration');
+            }}
+          />
+        )}
+
         {activeTab === 'food' && (
-          <FoodPlanner />
+          <FoodPlanner onOpenChatWithQuery={() => setActiveTab('chat')} />
         )}
 
         {activeTab === 'mindfulness' && (
@@ -429,6 +555,7 @@ export default function App() {
             onAddXp={addXp}
             onAddCoins={addCoins}
             setStats={setStats}
+            onMindfulnessSessionComplete={handleMindfulnessComplete}
           />
         )}
 
@@ -464,6 +591,7 @@ export default function App() {
             onAddCoins={addCoins}
             onAddXp={addXp}
             stats={stats}
+            waterData={waterData}
           />
         )}
       </main>

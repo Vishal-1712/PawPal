@@ -17,10 +17,11 @@ import {
 import { soundEngine } from '../utils/audio';
 
 export default function DailyPlanner({ onAddXp, onAddCoins }) {
-  const [wakeTime, setWakeTime] = useState('07:30');
-  const [bedTime, setBedTime] = useState('22:30');
-  const [schedule, setSchedule] = useState([
-    { id: 1, time: '07:30 AM', title: 'Gentle Wake-Up & Warm Water', category: 'hydration', completed: true, desc: 'Drink a big glass of room-temp water and do a 2-minute cat stretch.' },
+  const [wakeTime, setWakeTime] = useState(() => localStorage.getItem('pawpal_wake_time') || '07:30');
+  const [bedTime, setBedTime] = useState(() => localStorage.getItem('pawpal_bed_time') || '22:30');
+
+  const defaultSchedule = [
+    { id: 1, time: '07:30 AM', title: 'Gentle Wake-Up & Warm Water', category: 'hydration', completed: false, desc: 'Drink a big glass of room-temp water and do a 2-minute cat stretch.' },
     { id: 2, time: '08:15 AM', title: 'Nourishing Breakfast & Luna Check-In', category: 'food', completed: false, desc: 'Enjoy antioxidant smoothie bowl or eggs & toast.' },
     { id: 3, time: '09:30 AM', title: 'Morning Deep Focus Sprint 🎯', category: 'work', completed: false, desc: 'Block all distractions and conquer your #1 priority task.' },
     { id: 4, time: '11:15 AM', title: 'Hydration & Posture Reset Break 💧', category: 'hydration', completed: false, desc: 'Refill water bottle and roll shoulders 5 times.' },
@@ -29,25 +30,48 @@ export default function DailyPlanner({ onAddXp, onAddCoins }) {
     { id: 7, time: '06:00 PM', title: 'Active Workout or Playful Movement 🏃', category: 'fitness', completed: false, desc: 'Cardio, strength, or cycling to energize your body.' },
     { id: 8, time: '07:30 PM', title: 'Balanced Dinner with Veggies & Protein', category: 'food', completed: false, desc: 'Unplug while eating and savor every bite.' },
     { id: 9, time: '09:30 PM', title: 'Screen-Free Wind-Down & Reading 🌙', category: 'sleep', completed: false, desc: 'Dim lights, cozy chamomile tea, and restful sleep.' }
-  ]);
+  ];
+
+  const [schedule, setSchedule] = useState(() => {
+    try {
+      const saved = localStorage.getItem('pawpal_daily_schedule');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return defaultSchedule;
+  });
 
   const [newTitle, setNewTitle] = useState('');
   const [newTime, setNewTime] = useState('12:00 PM');
   const [showAddModal, setShowAddModal] = useState(false);
 
+  const handleWakeChange = (val) => {
+    setWakeTime(val);
+    localStorage.setItem('pawpal_wake_time', val);
+  };
+
+  const handleBedChange = (val) => {
+    setBedTime(val);
+    localStorage.setItem('pawpal_bed_time', val);
+  };
+
   const toggleBlock = (id) => {
-    soundEngine.playHabitComplete();
-    setSchedule(schedule.map(block => {
-      if (block.id === id) {
-        const nextComp = !block.completed;
-        if (nextComp) {
-          onAddXp(20);
-          onAddCoins(10);
-        }
-        return { ...block, completed: nextComp };
+    setSchedule(prev => {
+      const target = prev.find(b => b.id === id);
+      if (!target) return prev;
+      const nextComp = !target.completed;
+      if (nextComp) {
+        soundEngine.playHabitComplete();
+        onAddXp(20);
+        onAddCoins(10);
+      } else {
+        soundEngine.playClickRing();
+        onAddXp(-20);
+        onAddCoins(-10);
       }
-      return block;
-    }));
+      const updated = prev.map(block => block.id === id ? { ...block, completed: nextComp } : block);
+      try { localStorage.setItem('pawpal_daily_schedule', JSON.stringify(updated)); } catch(e) {}
+      return updated;
+    });
   };
 
   const handleAddBlock = (e) => {
@@ -63,7 +87,9 @@ export default function DailyPlanner({ onAddXp, onAddCoins }) {
       desc: 'Custom wellness activity'
     };
 
-    setSchedule([...schedule, newBlock]);
+    const next = [...schedule, newBlock];
+    setSchedule(next);
+    try { localStorage.setItem('pawpal_daily_schedule', JSON.stringify(next)); } catch(e) {}
     setNewTitle('');
     setShowAddModal(false);
     soundEngine.playPurrBurst();

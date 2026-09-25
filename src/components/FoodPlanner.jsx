@@ -16,7 +16,13 @@ import { soundEngine } from '../utils/audio';
 export default function FoodPlanner({ onOpenChatWithQuery }) {
   const [selectedDiet, setSelectedDiet] = useState('All');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [plannedMeals, setPlannedMeals] = useState([]);
+  const [plannedMeals, setPlannedMeals] = useState(() => {
+    try {
+      const saved = localStorage.getItem('pawpal_planned_meals');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return [];
+  });
   const [recipes, setRecipes] = useState(HEALTHY_MEALS);
 
   const diets = ['All', 'Vegetarian', 'Vegan', 'Gluten-Free', 'High-Protein'];
@@ -24,11 +30,11 @@ export default function FoodPlanner({ onOpenChatWithQuery }) {
 
   const togglePlanMeal = (id) => {
     soundEngine.playCoinCollect();
-    if (plannedMeals.includes(id)) {
-      setPlannedMeals(plannedMeals.filter((m) => m !== id));
-    } else {
-      setPlannedMeals([...plannedMeals, id]);
-    }
+    setPlannedMeals(prev => {
+      const next = prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id];
+      try { localStorage.setItem('pawpal_planned_meals', JSON.stringify(next)); } catch (e) {}
+      return next;
+    });
   };
 
   const filteredMeals = recipes.filter((meal) => {

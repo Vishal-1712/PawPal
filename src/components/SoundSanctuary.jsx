@@ -43,9 +43,7 @@ export default function SoundSanctuary() {
   const handleVolumeChange = (type, newVol) => {
     setVolumes((prev) => ({ ...prev, [type]: newVol }));
     if (ambientStates[type]) {
-      // Re-trigger with new volume
-      soundEngine.toggleAmbient(type);
-      soundEngine.toggleAmbient(type, newVol);
+      soundEngine.setAmbientVolume(type, newVol);
     }
   };
 

@@ -78,6 +78,7 @@ export default function LunaPet({
 
   // Petting Luna costs 10 Coins
   const handlePet = (e) => {
+    if (activeAction) return;
     if (stats.coins < 10) {
       setCoinAlertMessage("Need 10 Coins to pet Luna! 🪙 Complete habits to earn coins!");
       setTimeout(() => setCoinAlertMessage(null), 3000);
@@ -109,6 +110,7 @@ export default function LunaPet({
 
   // Feeding Luna costs 10 Coins (Plays Kids Happy / Yippee song!)
   const handleFeed = () => {
+    if (activeAction) return;
     if (stats.coins < 10) {
       setCoinAlertMessage("Need 10 Coins to feed Luna fresh salmon! 🪙 Complete habits to earn coins!");
       setTimeout(() => setCoinAlertMessage(null), 3000);
@@ -139,9 +141,10 @@ export default function LunaPet({
 
   // Play with yarn (Free, no XP gain, plays Cat Plays Drums sound!)
   const handlePlay = () => {
+    if (activeAction) return;
+    setActiveAction('playing');
     soundEngine.playCatPlaysDrums();
     setPetEmotion('playing');
-    setActiveAction('playing');
     setLunaQuote("*Batting at the green yarn ball with Cat Plays Drums beat!* 🧶🥁✨");
     
     // No XP increase as requested!
@@ -155,9 +158,10 @@ export default function LunaPet({
 
   // Power nap (Free, no XP gain, plays Snore mimimimimimi sound!)
   const handleNap = () => {
+    if (activeAction) return;
+    setActiveAction('sleeping');
     soundEngine.playSnore();
     setPetEmotion('sleeping');
-    setActiveAction('sleeping');
     setLunaQuote("*Snore mimimimimimi...* Luna is taking a cozy power nap! 😴💤");
     
     // No XP increase

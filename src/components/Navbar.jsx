@@ -16,7 +16,8 @@ import {
   Wind, 
   Calendar, 
   ShoppingBag,
-  Trophy
+  Trophy,
+  MessageSquare
 } from 'lucide-react';
 import { soundEngine } from '../utils/audio';
 import { calculateLevelFromTotalXp } from '../utils/levelSystem';
@@ -43,6 +44,7 @@ export default function Navbar({
 
   const navItems = [
     { id: 'sanctuary', label: 'Luna Sanctuary', icon: Cat },
+    { id: 'chat', label: 'Luna Chat 💬', icon: MessageSquare },
     { id: 'shop', label: "Luna's Boutique 🎩", icon: ShoppingBag },
     { id: 'hydration', label: 'Hydration 💧', icon: Droplet },
     { id: 'habits', label: 'Habits 🎯', icon: CheckCircle2 },
@@ -119,22 +121,22 @@ export default function Navbar({
           {/* Streak */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: '0.35rem',
-            background: '#f0fdf4', border: '1.5px solid #a7f3d0',
+            background: 'var(--surface-light)', border: '1.5px solid var(--border-medium)',
             borderRadius: '99px', padding: '0.3rem 0.8rem',
-            fontSize: '0.82rem', fontWeight: '700', color: '#15803d'
-          }} title="Daily Wellness Streak">
-            <Droplet size={14} fill="#4ade80" color="#4ade80" />
-            <span>{stats.streak} Days</span>
+            fontSize: '0.82rem', fontWeight: '700', color: 'var(--text-main)'
+          }} title="Daily Wellness Streak (Maintained across consecutive days)">
+            <Flame size={14} fill="#f97316" color="#f97316" />
+            <span>{stats.streak || 0} {stats.streak === 1 ? 'Day' : 'Days'}</span>
           </div>
 
           {/* Coins */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: '0.35rem',
-            background: '#f0fdf4', border: '1.5px solid #a7f3d0',
+            background: 'var(--surface-light)', border: '1.5px solid var(--border-medium)',
             borderRadius: '99px', padding: '0.3rem 0.8rem',
-            fontSize: '0.82rem', fontWeight: '700', color: '#15803d'
+            fontSize: '0.82rem', fontWeight: '700', color: 'var(--text-main)'
           }} title="Wellness Coins (Used to pet, feed & buy boutique outfits)">
-            <Coins size={14} fill="#4ade80" color="#4ade80" />
+            <Coins size={14} fill="#fbbf24" color="#d97706" />
             <span>{stats.coins}</span>
           </div>
 
@@ -143,9 +145,9 @@ export default function Navbar({
             display: 'flex', flexDirection: 'column', gap: '0.15rem',
             minWidth: '150px'
           }} title={`Level ${levelInfo.level}: ${levelInfo.xpInCurrentLevel}/${levelInfo.xpNeededForNextLevel} XP to Level ${levelInfo.level + 1}`}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#4b7a5c', fontWeight: '600' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-body)', fontWeight: '600' }}>
               <span>Lvl {levelInfo.level} Kitten ({levelInfo.xpInCurrentLevel}/{levelInfo.xpNeededForNextLevel} XP)</span>
-              <span style={{ color: '#16a34a' }}>{levelInfo.progressPercent}%</span>
+              <span style={{ color: 'var(--primary)' }}>{levelInfo.progressPercent}%</span>
             </div>
             <div className="progress-bar-container" style={{ height: '7px' }}>
               <div className="progress-bar-fill" style={{
@@ -155,16 +157,28 @@ export default function Navbar({
             </div>
           </div>
 
+          {/* Theme Toggle (Light / Dark) */}
+          <button
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="btn btn-outline btn-icon"
+            style={{ width: '36px', height: '36px', borderColor: 'var(--border-medium)' }}
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            {theme === 'dark'
+              ? <Sun size={16} color="#fbbf24" />
+              : <Moon size={16} color="#16a34a" />}
+          </button>
+
           {/* Mute */}
           <button
             onClick={toggleMute}
             className="btn btn-outline btn-icon"
-            style={{ width: '36px', height: '36px', borderColor: '#a7f3d0' }}
+            style={{ width: '36px', height: '36px', borderColor: 'var(--border-medium)' }}
             title={isMuted ? 'Unmute' : 'Mute'}
           >
             {isMuted
               ? <VolumeX size={15} color="#6b7280" />
-              : <Volume2 size={15} color="#16a34a" />}
+              : <Volume2 size={15} color="var(--primary)" />}
           </button>
 
           {/* User Profile / Auth Action */}

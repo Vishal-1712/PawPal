@@ -22,11 +22,8 @@ class SoundEngine {
     }
   }
 
-  // Internal helper: play a remote mp3
-  // - If already playing the SAME url and < 5 seconds in → ignore the click (play only once)
-  // - If already playing but 5+ seconds elapsed → allow restart
-  // - If a DIFFERENT sound → stop old one and play new one
-  _playRemote(url, volume = 0.85) {
+  // Internal helper: play a remote mp3 with procedural fallback if offline/failed
+  _playRemote(url, volume = 0.85, fallbackFn = null) {
     if (this.isMuted) return null;
 
     // If same audio is already playing and under 5 seconds in → skip (no restart)
@@ -36,23 +33,29 @@ class SoundEngine {
       this.activeAudio._sourceUrl === url &&
       this.activeAudio.currentTime < 5
     ) {
-      return this.activeAudio; // Already playing, do nothing
+      return this.activeAudio;
     }
 
-    // Stop whatever is currently playing (different sound or same sound after 5s)
+    // Stop whatever is currently playing
     this.stopActiveAudio();
 
     try {
       const audio = new Audio(url);
       audio.volume = volume;
-      audio._sourceUrl = url; // Tag it so we can detect repeated clicks
-      audio.play().catch(e => console.warn('Remote audio play error:', e));
+      audio._sourceUrl = url;
+      audio.play().catch(e => {
+        console.warn('Remote audio play error, falling back to Web Audio:', e);
+        if (fallbackFn) fallbackFn();
+      });
+      audio.onerror = () => {
+        if (fallbackFn) fallbackFn();
+      };
       this.activeAudio = audio;
-      // Auto-clear when track ends naturally
       audio.addEventListener('ended', () => { this.activeAudio = null; });
       return audio;
     } catch (e) {
-      console.warn('Remote audio error:', e);
+      console.warn('Remote audio error, falling back to Web Audio:', e);
+      if (fallbackFn) fallbackFn();
       return null;
     }
   }
@@ -76,34 +79,58 @@ class SoundEngine {
     }
   }
 
-  // Play Level Up Dance Song (Happy Happy Happy Cat Song)
+  // Play Level Up Dance Song with procedural fanfare fallback
   playLevelUpDanceSong() {
-    return this._playRemote('https://www.myinstants.com/media/sounds/happy-happy-happy-song.mp3');
+    return this._playRemote(
+      'https://www.myinstants.com/media/sounds/happy-happy-happy-song.mp3',
+      0.85,
+      () => this.playProceduralFanfare()
+    );
   }
 
-  // Play Pet Luna Song (Meow Sleigh Ride)
+  // Play Pet Luna Song with meow fallback
   playPetSong() {
-    return this._playRemote('https://www.myinstants.com/media/sounds/meow-ride.mp3');
+    return this._playRemote(
+      'https://www.myinstants.com/media/sounds/meow-ride.mp3',
+      0.85,
+      () => { this.playMeow(); this.playPurrBurst(); }
+    );
   }
 
-  // Play Feed Luna Song (Kids Happy / Yippee!)
+  // Play Feed Luna Song with cheerful chime fallback
   playFeedSong() {
-    return this._playRemote('https://www.myinstants.com/media/sounds/kids-happy.mp3');
+    return this._playRemote(
+      'https://www.myinstants.com/media/sounds/kids-happy.mp3',
+      0.85,
+      () => this.playHabitComplete()
+    );
   }
 
-  // Play Huh Cat Sound (Untick Habit)
+  // Play Huh Cat Sound with wobble fallback
   playHuhCat() {
-    return this._playRemote('https://www.myinstants.com/media/sounds/huh-cat.mp3');
+    return this._playRemote(
+      'https://www.myinstants.com/media/sounds/huh-cat.mp3',
+      0.85,
+      () => this.playClickRing()
+    );
   }
 
-  // Play Cat Plays Drums Sound (Play Yarn)
+  // Play Cat Plays Drums Sound with rhythmic beat fallback
   playCatPlaysDrums() {
-    return this._playRemote('https://www.myinstants.com/media/sounds/cat-plays-drums.mp3');
+    return this._playRemote(
+      'https://www.myinstants.com/media/sounds/cat-plays-drums.mp3',
+      0.85,
+      () => this.playProceduralBeat()
+    );
   }
 
-  // Play Snore Mimimimimimi Sound (Power Nap)
+  // Play Snore Sound with relaxing breath fallback
   playSnore() {
-    return this._playRemote('https://www.myinstants.com/media/sounds/snore-mimimimimimi.mp3');
+    return this._playRemote(
+      'https://www.myinstants.com/media/sounds/snore-mimimimimimi.mp3',
+      0.85,
+      () => this.playPurrBurst()
+    );
   }
 
   // Short click ring/chime sound (habit untick) — generated with Web Audio API
@@ -212,15 +239,103 @@ class SoundEngine {
     }
   }
 
-  // Hydration Water Drinking Sound Effect (Three Stooges Drinking Sound from MyInstants)
+  // Hydration Water Drinking Sound Effect with procedural bubble fallback
   playWaterDrop() {
+    return this._playRemote(
+      'https://www.myinstants.com/media/sounds/drinking-sound.mp3',
+      0.85,
+      () => this.playProceduralWaterBubble()
+    );
+  }
+
+  // Procedural Water Bubble Gulp Effect
+  playProceduralWaterBubble() {
     if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
     try {
-      const audio = new Audio('https://www.myinstants.com/media/sounds/drinking-sound.mp3');
-      audio.volume = 0.85;
-      audio.play().catch(e => console.warn('Drinking sound play error:', e));
+      [0, 0.09, 0.18].forEach((delay, idx) => {
+        const now = this.ctx.currentTime + delay;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        const startFreq = 420 + idx * 80;
+        osc.frequency.setValueAtTime(startFreq, now);
+        osc.frequency.exponentialRampToValueAtTime(startFreq * 1.8, now + 0.07);
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.2, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.09);
+      });
     } catch (e) {
-      console.warn('Audio drinking sound error:', e);
+      console.warn('Procedural water error:', e);
+    }
+  }
+
+  // Procedural Celebratory Fanfare (for Level Up Dance fallback)
+  playProceduralFanfare() {
+    if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const notes = [
+        { f: 523.25, d: 0.12 }, // C5
+        { f: 659.25, d: 0.12 }, // E5
+        { f: 783.99, d: 0.12 }, // G5
+        { f: 1046.50, d: 0.35 } // C6
+      ];
+      let t = this.ctx.currentTime;
+      notes.forEach(n => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(n.f, t);
+
+        gain.gain.setValueAtTime(0.001, t);
+        gain.gain.linearRampToValueAtTime(0.22, t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + n.d);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(t);
+        osc.stop(t + n.d);
+        t += n.d * 0.9;
+      });
+    } catch (e) {
+      console.warn('Fanfare error:', e);
+    }
+  }
+
+  // Procedural Drum/Beat fallback for Cat Plays Drums
+  playProceduralBeat() {
+    if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      [0, 0.15, 0.3, 0.45].forEach((delay, idx) => {
+        const now = this.ctx.currentTime + delay;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = idx % 2 === 0 ? 'sine' : 'triangle';
+        osc.frequency.setValueAtTime(idx % 2 === 0 ? 140 : 220, now);
+        osc.frequency.exponentialRampToValueAtTime(45, now + 0.08);
+
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.11);
+      });
+    } catch (e) {
+      console.warn('Beat error:', e);
     }
   }
 
@@ -462,6 +577,26 @@ class SoundEngine {
       console.warn('Ambient start error:', e);
     }
     return false;
+  }
+
+  // Smoothly adjust ambient channel volume without tearing down audio nodes
+  setAmbientVolume(type, volume = 0.5) {
+    if (!this.ctx || !this.activeAmbientSources[type]) return;
+    const source = this.activeAmbientSources[type];
+    if (source.gainNode) {
+      try {
+        const now = this.ctx.currentTime;
+        let multiplier = 1;
+        if (type === 'purr') multiplier = 0.35;
+        else if (type === 'rain') multiplier = 0.2;
+        else if (type === 'waves') multiplier = 0.28;
+        else if (type === 'lofi') multiplier = 0.15;
+        source.gainNode.gain.cancelScheduledValues(now);
+        source.gainNode.gain.linearRampToValueAtTime(volume * multiplier, now + 0.05);
+      } catch (e) {
+        console.warn('setAmbientVolume error:', e);
+      }
+    }
   }
 
   stopAmbient(type) {

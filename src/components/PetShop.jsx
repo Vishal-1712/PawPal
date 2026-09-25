@@ -94,65 +94,43 @@ export default function PetShop({
   return (
     <div style={{ position: 'relative' }}>
       
-      {/* Guest Lock Overlay */}
+      {/* Guest Mode Advisory Banner */}
       {!currentUser && (
         <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(255, 255, 255, 0.88)',
-          backdropFilter: 'blur(8px)',
-          zIndex: 20,
-          borderRadius: '24px',
+          background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+          border: '1.5px solid #86efac',
+          borderRadius: '16px',
+          padding: '0.9rem 1.2rem',
+          marginBottom: '1.2rem',
           display: 'flex',
-          flexDirection: 'column',
+          justifyContent: 'space-between',
           alignItems: 'center',
-          justifyContent: 'center',
-          padding: '3rem 1.5rem',
-          textAlign: 'center',
-          minHeight: '450px'
+          flexWrap: 'wrap',
+          gap: '0.8rem'
         }}>
-          <div style={{
-            width: '64px',
-            height: '64px',
-            borderRadius: '50%',
-            background: '#16a34a',
-            color: '#ffffff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '1.8rem',
-            marginBottom: '1rem',
-            boxShadow: '0 8px 24px rgba(22, 163, 74, 0.3)'
-          }}>
-            <Lock size={28} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <span style={{ fontSize: '1.4rem' }}>🎩</span>
+            <div>
+              <div style={{ fontWeight: '800', fontSize: '0.9rem', color: '#14532d' }}>
+                Guest Mode Active: Try on and buy cute accessories!
+              </div>
+              <div style={{ fontSize: '0.78rem', color: '#166534' }}>
+                Create or log in to a profile to save your wardrobe and coin collection permanently across sessions.
+              </div>
+            </div>
           </div>
-          <h2 style={{ fontSize: '1.6rem', fontWeight: '800', color: '#14532d', marginBottom: '0.5rem' }}>
-            Luna's Boutique is Locked for Guests! 🎩
-          </h2>
-          <p style={{ fontSize: '0.95rem', color: '#4b7a5c', maxWidth: '440px', marginBottom: '1.5rem', lineHeight: '1.5' }}>
-            Sign in or create a profile to unlock Luna's Wardrobe, buy cute hats, golden collars, cloud beds, and save your outfits across sessions!
-          </p>
           <button 
             onClick={() => onShowAuth('boutique')} 
             className="btn btn-primary"
-            style={{ 
-              padding: '0.8rem 1.8rem', 
-              fontSize: '1rem', 
-              fontWeight: '700', 
-              boxShadow: '0 6px 20px rgba(22,163,74,0.3)',
-              borderRadius: '99px'
-            }}
+            style={{ padding: '0.4rem 0.9rem', fontSize: '0.8rem' }}
           >
-            <Sparkles size={18} />
-            <span>Login / Sign Up to Unlock Boutique 🐾</span>
+            <Sparkles size={14} />
+            <span>Save Profile</span>
           </button>
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 360px) 1fr', gap: '1.5rem', alignItems: 'start', opacity: !currentUser ? 0.3 : 1, pointerEvents: !currentUser ? 'none' : 'auto' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 360px) 1fr', gap: '1.5rem', alignItems: 'start' }}>
       
       {/* ── LIVE LUNA DRESSING ROOM & FITTING STAGE ── */}
       <div className="glass-panel" style={{ padding: '1.8rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', position: 'sticky', top: '90px' }}>
